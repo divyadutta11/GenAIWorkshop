@@ -1,0 +1,16 @@
+{
+  "name": "energy-ai-advisor",
+  "version": "1.0.0",
+  "description": "WattWise AI — Responsive AI energy advisory, consumption analytics, scenario simulator, and utility API automation platform",
+  "type": "module",
+  "main": "server/index.mjs",
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+
+

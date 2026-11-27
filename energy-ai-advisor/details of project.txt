@@ -1,0 +1,51 @@
+WattWise AI — Technical Overview & Build Summary
+1. Project Overview
+
+WattWise AI is a responsive AI energy advisory web application where customers can:
+
+Upload consumption data (CSV or JSON) or connect simulated Utility APIs.
+Visualize consumption patterns (24-hour Time-of-Use load curve, 30-day consumption & anomaly detection, and end-use disaggregation).
+Receive AI-generated personalized energy-saving recommendations with monthly kWh, cost ($), and CO2e savings.
+Interactively simulate usage changes (thermostat shift, off-peak shifting, standby baseload cuts, LED/eco-appliance mode, rooftop solar PV, home battery storage, and tariff plans) with 12-month impact forecasts.
+Chat with a context-aware AI Energy Assistant grounded in live consumption and simulator metrics.
+Measure success through projected/realized energy savings and user feedback (helpful/not helpful votes, adopted recommendations, and 1–5 star CSAT ratings).
+
+
+2. Programming Languages & Technologies Used
+Frontend (public/)
+HTML5 (public/index.html): Semantic 5-tab layout, accessible ARIA controls, drag-and-drop file upload zone, simulator controls, and docked/mobile slide-over AI chat drawer.
+CSS3 (public/styles.css): CSS custom properties (design tokens), CSS Grid and Flexbox, dark slate/emerald theme, and responsive breakpoints (1120px, 860px, 560px).
+Vanilla JavaScript (ES2022 Modules) (public/js/app.js): Client-side state management, Fetch REST API integration, debounced simulator sliders, and feedback/chat event handling.
+Custom Inline SVG (public/js/charts.js): Zero-library interactive visualizations with hover tooltips (24-hour load comparison, end-use donut, 30-day daily bar chart, and 12-month scenario forecast).
+Backend (server/)
+
+JavaScript on Node.js v22.15.1 (ES Modules .mjs) (server/index.mjs, server/analytics.mjs).
+Node.js Built-in Core Modules: node:http, node:fs, node:path, node:url, node:test, and native fetch (zero third-party npm packages or build tools required).
+Optional External AI: Google Gemini REST API (gemini-2.5-flash) when an API key is configured, with automatic fallback to the built-in deterministic analytical advisor.
+Data Persistence: Local JSON file store (data/state.json).
+
+
+3. How It Was Built From Scratch
+Project Initialization (package.json): Configured a Node.js ESM ("type": "module") project structure split into server/, public/, data/, and test/ with zero external npm dependencies.
+Analytical & AI Engine (server/analytics.mjs): Built the 30-day smart-meter interval generator, CSV/JSON upload parser, Time-of-Use tariff and grid carbon intensity calculator, load-curve end-use disaggregation, personalized recommendation scorer, 24-hour & 12-month scenario simulator, and context-aware AI chat engine.
+Backend HTTP Server & REST API (server/index.mjs): Built a single-process node:http server serving static frontend files and 9 JSON REST endpoints (/api/health, /api/dashboard, /api/sample-csv, /api/upload, /api/utilities/connect, /api/utilities/sync, /api/simulate, /api/chat, /api/feedback) with CORS and JSON persistence.
+Responsive Frontend & Visualizations (public/): Created the 5-tab workspace (Overview & Patterns, AI Recommendations, Scenario Simulator, Utility API & Data Flow, Impact & Feedback), interactive SVG charts, simulated Utility API connectors (Green Button Connect ESPI, Octopus Energy Smart API, PG&E Share My Data, Tata Power Smart Meter Hub), and the AI Energy Assistant chat panel.
+Testing & Verification (test/smoke.test.mjs): Wrote automated unit/smoke tests using Node's built-in node:test and node:assert/strict, and verified the running server endpoints.
+
+
+4. Hosting Server Details (Node.js HTTP Server vs. IIS)
+Current Hosting Server: Built-in Node.js HTTP Server (http.createServer via node:http in server/index.mjs).
+Port & Local URL: Listening on http://localhost:3456.
+How It Works: A single lightweight Node.js process serves both static frontend files (public/) with MIME-type detection and backend REST APIs (/api/*).
+Is It Hosted in IIS?: No. It runs directly on Node.js.
+If You Want IIS Hosting Later (Windows Server Production):
+Option 1 — IIS Reverse Proxy (Recommended): Keep node server/index.mjs running as a Windows Service (via NSSM or PM2) on localhost:3456, and configure IIS with URL Rewrite + Application Request Routing (ARR) to forward HTTP/HTTPS traffic (80/443).
+Option 2 — iisnode: Host the Node.js app directly inside an IIS site using the iisnode module and a web.config file.
+
+
+
+5. Verification & Run Commands
+Smoke Tests (node --test test/smoke.test.mjs): 4 / 4 passed (30-day analysis, CSV upload parsing, 12-month simulation, and context-aware AI chat reply).
+Live HTTP Verification: Confirmed HTTP 200 OK on /, /api/health, /api/dashboard, and /js/app.js.
+Project Path: C:\Users\DelhiGG7GenAIUSR5\.gemini\antigravity\scratch\energy-ai-advisor
+Start Command: node server/index.mjs (open http://localhost:3456).

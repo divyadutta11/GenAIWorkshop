@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WattWise AI · Personalized Energy Advisory &amp; Scenario Simulator</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="topbar">
+      <div class="brand-group">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">WattWise AI</h1>
+          <p class="brand-subtitle" id="dataset-badge">Loading telemetry…</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="sync-pill" id="sync-status-pill" title="Automated Utility Data Flow">
+          <span class="pulse-dot"></span>
+          <span id="sync-status-text">API Sync Active</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btn-sync-now" type="button">Sync Utility</button>
+        <button class="btn btn-ghost btn-sm" id="btn-open-settings" type="button">AI Key</button>
+        <button class="btn btn-primary btn-sm mobile-chat-toggle" id="btn-toggle-chat" type="button">
+          AI Assistant
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="main-nav" aria-label="Primary sections">
+      <button class="nav-tab active" data-tab="overview" type="button">Overview &amp; Patterns</button>
+      <button class="nav-tab" data-tab="customer-tariff" type="button">Customer &amp; Tariff</button>
+      <button class="nav-tab" data-tab="recommendations" type="button">AI Recommendations</button>
+      <button class="nav-tab" data-tab="simulator" type="button">Scenario Simulator</button>
+      <button class="nav-tab" data-tab="data-flow" type="button">Utility API &amp; Data Flow</button>
+      <button class="nav-tab" data-tab="rag-kb" type="button">RAG Excel KB</button>
+      <button class="nav-tab" data-tab="feedback" type="button">Impact &amp; Feedback</button>
+    </nav>
+
+    <!-- Main Content + Docked AI Chat Layout -->
+    <div class="workspace-grid">
+      <main class="main-content">
+        <!-- Visible Active Customer Profile Strip -->
+        <section class="profile-banner" aria-label="Active customer profile">
+          <div class="profile-banner-main">
+            <div class="profile-avatar" id="banner-avatar">AM</div>
+            <div class="profile-banner-info">
+              <div class="profile-banner-title">
+                <strong id="banner-name">Loading customer…</strong>
+                <span class="badge badge-success" id="banner-account">—</span>
+                <span class="badge badge-medium" id="banner-tariff">—</span>
+              </div>
+              <p class="card-subtitle" id="banner-meta">City · DISCOM · Meter · Sanctioned Load</p>
+            </div>
+          </div>
+          <div class="profile-banner-actions">
+            <label class="sr-only" for="quick-profile-select">Switch customer profile</label>
+            <select id="quick-profile-select" class="input input-sm"></select>
+            <button class="btn btn-secondary btn-sm" id="btn-open-profile-tab" type="button">Profile &amp; Tariff</button>
+          </div>
+        </section>
+
+        <!-- Global KPI Strip -->
+        <section class="kpi-strip" aria-label="Key energy and success metrics">
+          <article class="kpi-card">
+            <div class="kpi-label">Monthly Consumption</div>
+            <div class="kpi-value" id="kpi-kwh">—</div>
+            <div class="kpi-meta" id="kpi-kwh-meta">Peak — kW · Baseload — kW</div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-label">Estimated Monthly Bill (₹)</div>
+            <div class="kpi-value" id="kpi-cost">—</div>
+            <div class="kpi-meta positive" id="kpi-cost-meta">Scenario saves —/mo</div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-label">Projected Energy Savings</div>
+            <div class="kpi-value accent" id="kpi-savings">—</div>
+            <div class="kpi-meta" id="kpi-savings-meta">— kg CO₂e/mo avoided</div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-label">Success &amp; User Feedback</div>
+            <div class="kpi-value" id="kpi-feedback">—</div>
+            <div class="kpi-meta" id="kpi-feedback-meta">CSAT —/5.0 · — adopted</div>
+          </article>
+        </section>
+
+        <!-- TAB 1: Overview & Consumption Pattern Visualization -->
+        <section class="tab-panel active" id="panel-overview">
+          <div class="panel-grid-2">
+            <article class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h2>24-Hour Load Profile &amp; TOU Exposure</h2>
+                  <p class="card-subtitle">Baseline hourly curve vs. active simulated scenario across tariff windows</p>
+                </div>
+                <div class="legend-inline">
+                  <span class="legend-item"><span class="swatch swatch-base"></span>Baseline</span>
+                  <span class="swatch-line"></span>
+                  <span class="legend-item"><span class="swatch swatch-sim"></span>Simulated</span>
+                  <span class="legend-item"><span class="swatch swatch-peak"></span>Peak 4–9 PM</span>
+                </div>
+              </div>
+              <div class="chart-box" id="chart-hourly"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>End-Use Disaggregation</h2>
+                  <p class="card-subtitle">AI-inferred appliance &amp; system shares from load curve</p>
+                </div>
+              </div>
+              <div class="disagg-layout">
+                <div class="donut-box" id="chart-donut"></div>
+                <div class="enduse-list" id="enduse-list"></div>
+              </div>
+            </article>
+          </div>
+
+          <article class="card chart-card">
+            <div class="card-header">
+              <div>
+                <h2>Daily Consumption &amp; Anomaly Detection</h2>
+                <p class="card-subtitle">30-day trend highlighting peak anomaly days (&gt;24% above daily mean)</p>
+              </div>
+              <div id="anomaly-badge" class="badge badge-warn">0 anomalies</div>
+            </div>
+            <div class="chart-box" id="chart-daily"></div>
+          </article>
+
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Top AI Opportunities</h2>
+                <p class="card-subtitle">Personalized actions ranked by Rupee bill and kWh impact</p>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-goto-recs" type="button">View All &amp; Rate</button>
+            </div>
+            <div class="mini-rec-grid" id="overview-top-recs"></div>
+          </article>
+        </section>
+
+        <!-- TAB 2: Customer Profile & Tariff Information Dashboard -->
+        <section class="tab-panel" id="panel-customer-tariff">
+          <div class="panel-grid-2">
+            <!-- Active Customer Profile Details & Edit -->
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Active Customer Profile</h2>
+                  <p class="card-subtitle">Stored in backend (`data/state.json`) and synced with meter telemetry</p>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-toggle-edit-profile" type="button">Edit Profile</button>
+              </div>
+
+              <div class="profile-detail-grid" id="active-profile-details"></div>
+
+              <form id="edit-profile-form" class="profile-form" hidden>
+                <div class="form-grid-2">
+                  <div class="control-group">
+                    <label for="edit-prof-name">Customer Name</label>
+                    <input type="text" id="edit-prof-name" class="input" required />
+                  </div>
+                  <div class="control-group">
+                    <label for="edit-prof-account">Account Number</label>
+                    <input type="text" id="edit-prof-account" class="input" required />
+                  </div>
+                  <div class="control-group">
+                    <label for="edit-prof-city">City</label>
+                    <input type="text" id="edit-prof-city" class="input" required />
+                  </div>
+                  <div class="control-group">
+                    <label for="edit-prof-discom">DISCOM / Utility</label>
+                    <input type="text" id="edit-prof-discom" class="input" required />
+                  </div>
+                  <div class="control-group">
+                    <label for="edit-prof-segment">Segment</label>
+                    <input type="text" id="edit-prof-segment" class="input" />
+                  </div>
+                  <div class="control-group">
+                    <label for="edit-prof-meter">Smart Meter ID</label>
+                    <input type="text" id="edit-prof-meter" class="input" />
+                  </div>
+                  <div class="control-group">
+                    <label for="edit-prof-load">Sanctioned Load (kW)</label>
+                    <input type="number" id="edit-prof-load" class="input" min="1" max="50" step="0.5" />
+                  </div>
+                  <div class="control-group">
+                    <label for="edit-prof-household">Household Occupants</label>
+                    <input type="number" id="edit-prof-household" class="input" min="1" max="20" />
+                  </div>
+                  <div class="control-group">
+                    <label for="edit-prof-email">Email</label>
+                    <input type="email" id="edit-prof-email" class="input" />
+                  </div>
+                </div>
+                <div class="utility-actions" style="margin-top:0.75rem;">
+                  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                    <label class="checkbox-inline"><input type="checkbox" id="edit-prof-ev" /><span>Has EV Charger</span></label>
+                    <label class="checkbox-inline"><input type="checkbox" id="edit-prof-solar" /><span>Has Rooftop Solar</span></label>
+                  </div>
+                  <div style="display:flex;gap:0.5rem;">
+                    <button class="btn btn-ghost btn-sm" id="btn-cancel-edit-profile" type="button">Cancel</button>
+                    <button class="btn btn-primary btn-sm" type="submit">Save Changes</button>
+                  </div>
+                </div>
+              </form>
+            </article>
+
+            <!-- Create New Customer Profile -->
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Add New Customer Profile</h2>
+                  <p class="card-subtitle">Create a persistent customer profile with meter &amp; tariff setup</p>
+                </div>
+              </div>
+              <form id="create-profile-form" class="profile-form">
+                <div class="form-grid-2">
+                  <div class="control-group">
+                    <label for="new-prof-name">Customer Name *</label>
+                    <input type="text" id="new-prof-name" class="input" placeholder="e.g. Kavita Nair" required />
+                  </div>
+                  <div class="control-group">
+                    <label for="new-prof-city">City</label>
+                    <input type="text" id="new-prof-city" class="input" placeholder="e.g. Hyderabad" value="Hyderabad" />
+                  </div>
+                  <div class="control-group">
+                    <label for="new-prof-discom">DISCOM / Utility</label>
+                    <input type="text" id="new-prof-discom" class="input" placeholder="e.g. TGSPDCL Smart Grid" value="Urban Smart DISCOM" />
+                  </div>
+                  <div class="control-group">
+                    <label for="new-prof-segment">Customer Segment</label>
+                    <select id="new-prof-segment" class="input">
+                      <option value="Residential Apartment">Residential Apartment</option>
+                      <option value="Residential Villa · EV Home">Residential Villa · EV Home</option>
+                      <option value="Solar Home + Office">Solar Home + Office</option>
+                      <option value="Small Commercial Shop">Small Commercial Shop</option>
+                    </select>
+                  </div>
+                  <div class="control-group">
+                    <label for="new-prof-load">Sanctioned Load (kW)</label>
+                    <input type="number" id="new-prof-load" class="input" min="1" max="50" step="0.5" value="5" />
+                  </div>
+                  <div class="control-group">
+                    <label for="new-prof-tariff">Tariff Plan</label>
+                    <select id="new-prof-tariff" class="input"></select>
+                  </div>
+                  <div class="control-group">
+                    <label for="new-prof-meter">Meter ID (optional)</label>
+                    <input type="text" id="new-prof-meter" class="input" placeholder="Auto-generated if blank" />
+                  </div>
+                  <div class="control-group">
+                    <label for="new-prof-email">Email (optional)</label>
+                    <input type="email" id="new-prof-email" class="input" placeholder="customer@example.in" />
+                  </div>
+                </div>
+                <div class="utility-actions" style="margin-top:0.8rem;">
+                  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                    <label class="checkbox-inline"><input type="checkbox" id="new-prof-ev" /><span>EV Home Charger</span></label>
+                    <label class="checkbox-inline"><input type="checkbox" id="new-prof-solar" /><span>Rooftop Solar</span></label>
+                  </div>
+                  <button class="btn btn-primary btn-sm" type="submit">Create &amp; Load Profile</button>
+                </div>
+                <div id="profile-create-status" class="status-banner" hidden></div>
+              </form>
+            </article>
+          </div>
+
+          <!-- Stored Customer Profiles Directory -->
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Stored Customer Profiles Directory</h2>
+                <p class="card-subtitle">All customer accounts persisted in the backend — click Load to view telemetry &amp; bills</p>
+              </div>
+              <span class="badge badge-success" id="profiles-count-badge">0 profiles</span>
+            </div>
+            <div class="profiles-grid" id="profiles-directory"></div>
+          </article>
+
+          <!-- Tariff Information Dashboard -->
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Tariff Information Dashboard (INR ₹)</h2>
+                <p class="card-subtitle">Active TOU slab charges, monthly cost breakdown, and plan comparison</p>
+              </div>
+              <span class="badge badge-medium" id="active-tariff-badge">Active Plan</span>
+            </div>
+
+            <div class="tariff-breakdown-grid" id="tariff-tou-breakdown"></div>
+
+            <h3 class="subhead" style="margin-top:1.1rem;">Compare &amp; Switch Tariff Plans</h3>
+            <div class="tariff-cards-grid" id="tariff-plans-grid"></div>
+          </article>
+        </section>
+
+        <!-- TAB 3: AI Personalized Recommendations -->
+        <section class="tab-panel" id="panel-recommendations">
+          <div class="section-toolbar">
+            <div>
+              <h2>Personalized AI Energy Recommendations</h2>
+              <p class="card-subtitle">Generated from your real interval load shape, TOU tariff exposure, and baseload signature.</p>
+            </div>
+            <div class="filter-pills" id="rec-filters">
+              <button class="pill active" data-filter="all" type="button">All</button>
+              <button class="pill" data-filter="High" type="button">High Priority</button>
+              <button class="pill" data-filter="Tariff Optimization" type="button">Tariff</button>
+              <button class="pill" data-filter="Climate & HVAC" type="button">HVAC</button>
+              <button class="pill" data-filter="Clean Generation" type="button">Solar &amp; Storage</button>
+            </div>
+          </div>
+          <div class="recommendations-list" id="recommendations-list"></div>
+        </section>
+
+        <!-- TAB 4: Interactive Usage-Change Simulator & Scenario Forecasts -->
+        <section class="tab-panel" id="panel-simulator">
+          <div class="sim-layout">
+            <article class="card sim-controls-card">
+              <div class="card-header">
+                <div>
+                  <h2>Interactive Usage Simulator</h2>
+                  <p class="card-subtitle">Adjust habits, tariffs, and clean tech to forecast Rupee impact</p>
+                </div>
+                <button class="btn btn-ghost btn-sm" id="btn-sim-reset" type="button">Reset</button>
+              </div>
+
+              <div class="preset-row">
+                <button class="pill" data-preset="habits" type="button">Zero-Cost Habits</button>
+                <button class="pill" data-preset="ev_tou" type="button">Smart EV + TOU</button>
+                <button class="pill" data-preset="solar" type="button">Solar + Battery</button>
+              </div>
+
+              <div class="control-group">
+                <label for="sim-tariff">Utility Tariff Plan (₹/kWh)</label>
+                <select id="sim-tariff" class="input"></select>
+              </div>
+
+              <div class="control-group">
+                <div class="control-head">
+                  <label for="sim-thermostat">Peak AC Setpoint Shift</label>
+                  <span class="control-val" id="val-thermostat">+1.5 °C</span>
+                </div>
+                <input type="range" id="sim-thermostat" min="0" max="4" step="0.5" value="1.5" />
+              </div>
+
+              <div class="control-group">
+                <div class="control-head">
+                  <label for="sim-offpeak">Shift Peak Loads to Off-Peak</label>
+                  <span class="control-val" id="val-offpeak">40%</span>
+                </div>
+                <input type="range" id="sim-offpeak" min="0" max="90" step="5" value="40" />
+              </div>
+
+              <div class="control-group">
+                <div class="control-head">
+                  <label for="sim-baseload">Standby Baseload Reduction</label>
+                  <span class="control-val" id="val-baseload">20%</span>
+                </div>
+                <input type="range" id="sim-baseload" min="0" max="60" step="5" value="20" />
+              </div>
+
+              <div class="control-group toggle-row">
+                <div>
+                  <label for="sim-led">LED, BLDC &amp; Eco-Appliance Mode</label>
+                  <p class="hint">~9% daytime appliance efficiency gain</p>
+                </div>
+                <input type="checkbox" id="sim-led" class="switch" checked />
+              </div>
+
+              <div class="control-group">
+                <div class="control-head">
+                  <label for="sim-solar">Rooftop Solar PV Capacity</label>
+                  <span class="control-val" id="val-solar">0 kW</span>
+                </div>
+                <input type="range" id="sim-solar" min="0" max="10" step="0.5" value="0" />
+              </div>
+
+              <div class="control-group">
+                <div class="control-head">
+                  <label for="sim-battery">Home Battery Storage</label>
+                  <span class="control-val" id="val-battery">0 kWh</span>
+                </div>
+                <input type="range" id="sim-battery" min="0" max="15" step="1" value="0" />
+              </div>
+            </article>
+
+            <div class="sim-results-col">
+              <div class="sim-summary-grid">
+                <article class="card mini-stat">
+                  <span class="kpi-label">Annual Bill Savings</span>
+                  <strong class="stat-big positive" id="sim-annual-inr">₹0/yr</strong>
+                  <span class="hint" id="sim-monthly-inr">₹0/mo reduction</span>
+                </article>
+                <article class="card mini-stat">
+                  <span class="kpi-label">Annual Energy Saved</span>
+                  <strong class="stat-big accent" id="sim-annual-kwh">0 kWh</strong>
+                  <span class="hint" id="sim-pct-saved">0% lower usage</span>
+                </article>
+                <article class="card mini-stat">
+                  <span class="kpi-label">Peak Demand Cut</span>
+                  <strong class="stat-big" id="sim-peak-cut">0 kW</strong>
+                  <span class="hint" id="sim-carbon-cut">0 kg CO₂e/mo avoided</span>
+                </article>
+              </div>
+
+              <article class="card chart-card">
+                <div class="card-header">
+                  <div>
+                    <h2>12-Month Scenario Impact Forecast (₹)</h2>
+                    <p class="card-subtitle">Projected seasonal utility cost: Baseline vs. Simulated Scenario</p>
+                  </div>
+                  <div class="legend-inline">
+                    <span class="legend-item"><span class="swatch swatch-base"></span>Baseline ₹</span>
+                    <span class="legend-item"><span class="swatch swatch-sim"></span>Simulated ₹</span>
+                  </div>
+                </div>
+                <div class="chart-box" id="chart-forecast"></div>
+              </article>
+
+              <article class="card chart-card">
+                <div class="card-header">
+                  <div>
+                    <h2>Simulated 24-Hour Load Reshaping</h2>
+                    <p class="card-subtitle">How your selected changes flatten the 4–9 PM peak</p>
+                  </div>
+                </div>
+                <div class="chart-box" id="chart-sim-hourly"></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 5: Utility API Integrations & Automated Data Flow -->
+        <section class="tab-panel" id="panel-data-flow">
+          <div class="panel-grid-2">
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Upload Consumption Data</h2>
+                  <p class="card-subtitle">CSV or JSON smart-meter intervals (timestamp, kwh, optional temp)</p>
+                </div>
+                <a class="btn btn-ghost btn-sm" href="/api/sample-csv" download="smart-meter-sample-14d.csv">Sample CSV</a>
+              </div>
+
+              <div class="dropzone" id="upload-dropzone" tabindex="0" role="button" aria-label="Upload CSV or JSON file">
+                <input type="file" id="file-input" accept=".csv,.json,text/csv,application/json" hidden />
+                <div class="dropzone-icon">↑</div>
+                <p><strong>Drop CSV or JSON file here</strong> or click to browse</p>
+                <span class="hint">Auto-detects hourly, 15-min, or daily columns and updates active customer insights</span>
+              </div>
+              <div id="upload-status" class="status-banner" hidden></div>
+            </article>
+
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Utility API Automated Connection</h2>
+                  <p class="card-subtitle">Connect smart-meter feeds &amp; configure continuous sync cadence</p>
+                </div>
+              </div>
+
+              <div class="utility-list" id="utility-providers-list"></div>
+
+              <div class="utility-config-row">
+                <div class="control-group">
+                  <label for="meter-id-input">Meter / Account ID</label>
+                  <input type="text" id="meter-id-input" class="input" value="SM-9482-EV" />
+                </div>
+                <div class="control-group">
+                  <label for="sync-cadence-select">Auto-Sync Cadence</label>
+                  <select id="sync-cadence-select" class="input">
+                    <option value="15m">Every 15 minutes</option>
+                    <option value="1h">Hourly</option>
+                    <option value="6h">Every 6 hours</option>
+                    <option value="daily">Daily</option>
+                  </select>
+                </div>
+              </div>
+              <div class="utility-actions">
+                <label class="checkbox-inline">
+                  <input type="checkbox" id="auto-sync-checkbox" checked />
+                  <span>Enable automated background pipeline</span>
+                </label>
+                <button class="btn btn-primary" id="btn-connect-utility" type="button">Connect &amp; Sync Feed</button>
+              </div>
+            </article>
+          </div>
+
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Automated Data Flow Pipeline</h2>
+                <p class="card-subtitle">Real-time ingestion, normalization, INR tariff enrichment, and AI refresh</p>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-trigger-pipeline" type="button">Run Pipeline Now</button>
+            </div>
+            <div class="pipeline-steps" id="pipeline-stages"></div>
+            <h3 class="subhead">Recent Pipeline Execution Logs</h3>
+            <div class="log-table-wrap">
+              <table class="log-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Source / Provider</th>
+                    <th>Intervals</th>
+                    <th>Status</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody id="pipeline-logs-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <!-- TAB 6: Excel RAG Knowledge Base Manager -->
+        <section class="tab-panel" id="panel-rag-kb">
+          <div class="panel-grid-2">
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Excel Q&amp;A Knowledge Base (.xlsx / .csv)</h2>
+                  <p class="card-subtitle">Upload an Excel sheet with predefined Question &amp; Answer rows for the RAG agent</p>
+                </div>
+                <a class="btn btn-secondary btn-sm" href="/api/rag/kb/download" download="energy_rag_faq.xlsx">Download .xlsx</a>
+              </div>
+
+              <div class="dropzone" id="rag-dropzone" tabindex="0" role="button" aria-label="Upload Excel Q&A file">
+                <input type="file" id="rag-file-input" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden />
+                <div class="dropzone-icon">📊</div>
+                <p><strong>Drop Excel (.xlsx or .csv) Q&amp;A file here</strong> or click to browse</p>
+                <span class="hint">Expected columns: Question, Answer (optional: Category, Keywords, ActionTab, ActionLabel)</span>
+              </div>
+              <div id="rag-upload-status" class="status-banner" hidden></div>
+            </article>
+
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Add Q&amp;A Row to Excel RAG Agent</h2>
+                  <p class="card-subtitle">Appends directly to `data/energy_rag_faq.xlsx` and re-indexes instantly</p>
+                </div>
+              </div>
+              <form id="rag-add-form" class="profile-form">
+                <div class="form-grid-2">
+                  <div class="control-group">
+                    <label for="rag-new-category">Category</label>
+                    <input type="text" id="rag-new-category" class="input" placeholder="e.g. Billing & Subsidies" value="Custom FAQ" />
+                  </div>
+                  <div class="control-group">
+                    <label for="rag-new-keywords">Keywords (comma-separated)</label>
+                    <input type="text" id="rag-new-keywords" class="input" placeholder="subsidy, rebate, rooftop" />
+                  </div>
+                </div>
+                <div class="control-group" style="margin-top:0.65rem;">
+                  <label for="rag-new-question">Predefined Question *</label>
+                  <input type="text" id="rag-new-question" class="input" placeholder="e.g. How do I claim rooftop solar subsidy?" required />
+                </div>
+                <div class="control-group" style="margin-top:0.65rem;">
+                  <label for="rag-new-answer">Predefined Answer *</label>
+                  <textarea id="rag-new-answer" class="input textarea" rows="3" placeholder="Write the exact authoritative answer the RAG agent should retrieve…" required></textarea>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-primary btn-sm" type="submit">Add to Excel KB</button>
+                  <span class="hint" id="rag-add-status"></span>
+                </div>
+              </form>
+            </article>
+          </div>
+
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Indexed Excel Q&amp;A Rows</h2>
+                <p class="card-subtitle">Click &ldquo;Ask RAG&rdquo; on any row to test retrieval in the AI Energy Assistant</p>
+              </div>
+              <span class="badge badge-success" id="rag-kb-count-badge">0 Q&amp;As indexed</span>
+            </div>
+            <div class="log-table-wrap">
+              <table class="log-table">
+                <thead>
+                  <tr>
+                    <th>Row</th>
+                    <th>Category</th>
+                    <th>Question</th>
+                    <th>Predefined Answer</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="rag-kb-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <!-- TAB 7: Success Metrics & User Feedback -->
+        <section class="tab-panel" id="panel-feedback">
+          <div class="panel-grid-2">
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Program Success Scorecard</h2>
+                  <p class="card-subtitle">Measured by verified energy savings and positive user feedback</p>
+                </div>
+              </div>
+              <div class="scorecard-grid" id="scorecard-grid"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Rate Your Advisory Experience</h2>
+                  <p class="card-subtitle">Your feedback tunes recommendation relevance and assistant accuracy</p>
+                </div>
+              </div>
+              <form id="csat-form" class="csat-form">
+                <div class="star-row" id="star-row" role="radiogroup" aria-label="Rating out of 5">
+                  <button type="button" class="star-btn active" data-score="1">★</button>
+                  <button type="button" class="star-btn active" data-score="2">★</button>
+                  <button type="button" class="star-btn active" data-score="3">★</button>
+                  <button type="button" class="star-btn active" data-score="4">★</button>
+                  <button type="button" class="star-btn active" data-score="5">★</button>
+                </div>
+                <textarea id="csat-comment" class="input textarea" rows="3" placeholder="Tell us which savings insights helped most or what you want to simulate next…"></textarea>
+                <div class="form-actions">
+                  <button class="btn btn-primary" type="submit">Submit Feedback</button>
+                  <span class="hint" id="csat-status"></span>
+                </div>
+              </form>
+            </article>
+          </div>
+
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Recent Customer Feedback</h2>
+                <p class="card-subtitle">Live satisfaction ratings and recommendation helpfulness log</p>
+              </div>
+            </div>
+            <div class="feedback-feed" id="feedback-feed"></div>
+          </article>
+        </section>
+      </main>
+
+      <!-- Docked / Slide-over Interactive AI Energy Assistant -->
+      <aside class="chat-drawer" id="chat-drawer" aria-label="AI Energy Assistant">
+        <div class="chat-header">
+          <div>
+            <h2>AI Energy Assistant</h2>
+            <p class="card-subtitle" id="chat-engine-label">Interactive RAG · Customer &amp; Telemetry</p>
+          </div>
+          <div style="display:flex;gap:0.35rem;align-items:center;">
+            <button class="btn btn-secondary btn-sm" id="btn-open-rag-kb" type="button" title="Manage Excel RAG Knowledge Base">Excel KB</button>
+            <button class="btn btn-ghost btn-sm" id="btn-clear-chat" type="button" title="Reset conversation">Clear</button>
+            <button class="btn btn-ghost btn-sm mobile-chat-close" id="btn-close-chat" type="button">✕</button>
+          </div>
+        </div>
+
+        <div class="chat-chips" id="chat-chips">
+          <button class="chip" type="button" data-q="Show my customer profile & meter details">My Profile</button>
+          <button class="chip" type="button" data-q="Which tariff plan is cheapest for me?">Best Tariff (₹)</button>
+          <button class="chip" type="button" data-q="Why is my electricity bill high during peak hours?">Peak Bill Drivers</button>
+          <button class="chip" type="button" data-q="How much does my current simulator scenario save?">Simulator Savings</button>
+        </div>
+
+        <div class="chat-messages" id="chat-messages"></div>
+
+        <form class="chat-input-bar" id="chat-form">
+          <input type="text" id="chat-input" class="input" placeholder="Ask about your bill in ₹, profile, tariffs, or solar…" autocomplete="off" />
+          <button class="btn btn-primary" type="submit">Send</button>
+        </form>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Optional Gemini API Key Modal -->
+  <div class="modal-backdrop" id="settings-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="card-header">
+        <h2 id="modal-title">AI Engine Configuration</h2>
+        <button class="btn btn-ghost btn-sm" id="btn-close-modal" type="button">✕</button>
+      </div>
+      <p class="card-subtitle">
+        WattWise AI includes a built-in RAG advisory engine grounded in your customer profile, tariff schedule, and meter telemetry.
+        Optionally provide a Gemini API key (stored only in your browser) to route answers through Gemini.
+      </p>
+      <div class="control-group" style="margin-top: 1rem;">
+        <label for="gemini-key-input">Gemini API Key (Optional)</label>
+        <input type="password" id="gemini-key-input" class="input" placeholder="AIza..." />
+      </div>
+      <div class="form-actions" style="margin-top: 1rem;">
+        <button class="btn btn-primary" id="btn-save-key" type="button">Save Key</button>
+        <button class="btn btn-ghost" id="btn-clear-key" type="button">Clear Key</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
